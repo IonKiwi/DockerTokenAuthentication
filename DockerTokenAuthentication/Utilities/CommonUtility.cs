@@ -443,5 +443,26 @@ namespace DockerTokenAuthentication.Utilities {
 			valid = false;
 			return 0;
 		}
+
+		public static long GetTimestamp(DateTime time) {
+			if (time.Kind == DateTimeKind.Utc) {
+				return (long)(time - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
+			}
+			else if (time.Kind == DateTimeKind.Local) {
+				DateTime utcTime = time.ToUniversalTime();
+				return (long)(utcTime - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
+			}
+			else {
+				throw new InvalidOperationException();
+			}
+		}
+
+		public static long GetTimestamp() {
+			return (long)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
+		}
+
+		public static DateTime GetDateTimeFromTimestamp(long timestamp) {
+			return new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(timestamp);
+		}
 	}
 }

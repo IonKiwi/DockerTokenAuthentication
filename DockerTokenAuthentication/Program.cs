@@ -14,6 +14,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using System.Security.Authentication;
+using System.Security.Cryptography;
 
 namespace DockerTokenAuthentication {
 	public class Program {
