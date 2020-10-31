@@ -1,0 +1,24 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json.Serialization;
+using System.Threading.Tasks;
+
+namespace DockerTokenAuthentication.Config {
+	public class GlobalConfig : IFarmSettings {
+		public List<ServerBinding> ServerBindings {
+			get;
+			set;
+		}
+
+		public void Init() {
+			if (ServerBindings != null) {
+				foreach (var sb in ServerBindings) {
+					sb.Init();
+				}
+			}
+		}
+
+		IReadOnlyList<IServerBinding> IFarmSettings.ServerBindings => ServerBindings;
+	}
+}
