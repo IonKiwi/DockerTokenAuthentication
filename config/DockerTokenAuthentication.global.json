@@ -3,8 +3,8 @@
 		{
 			"port": 5001,
 			"config": {
-				"ServerCertificateProvider": "WindowsStore",
-				"ServerCertificate": "CN=Docker registry TLS"
+				"serverCertificateProvider": "WindowsStore",
+				"serverCertificate": "CN=Docker registry TLS"
 			}
 		}
 	],

@@ -16,12 +16,16 @@ namespace DockerTokenAuthentication.Config {
 	}
 
 	public class ServerCertificateSettings : IServerCertificateSettings {
+		[JsonPropertyName("serverCertificateProvider")]
 		public string ServerCertificateProvider { get; set; }
 
+		[JsonPropertyName("serverCertificate")]
 		public string ServerCertificate { get; set; }
 
+		[JsonPropertyName("serverCertificatePasswordProvider")]
 		public string ServerCertificatePasswordProvider { get; set; }
 
+		[JsonPropertyName("serverCertificatePassword")]
 		public string ServerCertificatePassword { get; set; }
 
 		public void Init() {
