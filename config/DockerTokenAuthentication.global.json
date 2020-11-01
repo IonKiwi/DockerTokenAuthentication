@@ -4,7 +4,7 @@
 			"port": 5001,
 			"config": {
 				"ServerCertificateProvider": "WindowsStore",
-				"ServerCertificate": "CN=dev-w10 TLS"
+				"ServerCertificate": "CN=Docker registry TLS"
 			}
 		}
 	],
@@ -13,10 +13,17 @@
 		"eccKey": "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgBQzQOmOjHp0/Ew5SltR0aVfcApAOAFwQ+Yu0NlqaahChRANCAAQlKJTz1/oHOVlxllQrzz3BEb2wjGUo4dMXsdXX/GGLVZS0Msp6fsD4QlAbY/8zXLGAfCHpSjkEHQgn7h5zOfJl",
 		"accounts": [
 			{
-				"registry":  "Docker registry",
+				"registry": "Docker registry",
 				"username": "foo",
 				"password": "bar",
-				"access": [ "push", "pull", "*" ]
+				"registryAccess": {
+					"scopedAccess": {
+						"catalog": [ "*" ]
+					}
+				},
+				"repositoryAccess": {
+					"access": [ "push", "pull", "delete" ]
+				}
 			}
 		]
 	}

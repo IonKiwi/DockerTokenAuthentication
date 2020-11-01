@@ -7,10 +7,11 @@ using System.Threading.Tasks;
 namespace DockerTokenAuthentication.Config {
 
 	public interface IRegistryAccount {
-		public string Registry { get; set; }
-		public string Username { get; set; }
-		public string Password { get; set; }
-		public IReadOnlyList<string> Access { get; }
+		string Registry { get; set; }
+		string Username { get; set; }
+		string Password { get; set; }
+		IRegistryAccess RepositoryAccess { get; }
+		IRegistryAccess RegistryAccess { get; }
 	}
 
 	public class RegistryAccount : IRegistryAccount {
@@ -24,13 +25,23 @@ namespace DockerTokenAuthentication.Config {
 		[JsonPropertyName("password")]
 		public string Password { get; set; }
 
-		[JsonPropertyName("access")]
-		public List<string> Roles { get; set; }
+		[JsonPropertyName("repositoryAccess")]
+		public RegistryAccess RepositoryAccess { get; set; }
+
+		[JsonPropertyName("registryAccess")]
+		public RegistryAccess RegistryAccess { get; set; }
 
 		public void Init() {
-
+			if (RepositoryAccess != null) {
+				RepositoryAccess.Init();
+			}
+			if (RegistryAccess != null) {
+				RegistryAccess.Init();
+			}
 		}
 
-		IReadOnlyList<string> IRegistryAccount.Access => Roles;
+		IRegistryAccess IRegistryAccount.RegistryAccess => RegistryAccess;
+
+		IRegistryAccess IRegistryAccount.RepositoryAccess => RepositoryAccess;
 	}
 }

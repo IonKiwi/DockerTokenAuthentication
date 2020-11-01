@@ -31,6 +31,7 @@ namespace DockerTokenAuthentication.Core {
 			string authorization = context.Request.Headers["Authorization"];
 			string service = context.Request.Query["service"];
 			string scope = context.Request.Query["scope"];
+			string offline_token = context.Request.Query["offline_token"];
 			if (authorization != null && authorization.StartsWith("Basic ", StringComparison.Ordinal) && !string.IsNullOrEmpty(service)) {
 				var credentials = Encoding.UTF8.GetString(Convert.FromBase64String(authorization.Substring(6)));
 				int x = credentials.IndexOf(':');
@@ -47,13 +48,15 @@ namespace DockerTokenAuthentication.Core {
 
 						string type = null;
 						string name = null;
-						string[] access = null;
+						string[] requestedAccess = null;
+						IRegistryAccess access = null;
 						if (scope != null && scope.StartsWith("repository:", StringComparison.Ordinal)) {
 							x = scope.LastIndexOf(':');
 							if (x > 0) {
 								type = "repository";
 								name = scope.Substring(11, x - 11);
-								access = scope.Substring(x + 1).Split(',');
+								requestedAccess = scope.Substring(x + 1).Split(',');
+								access = account.RepositoryAccess;
 							}
 						}
 						else if (scope != null && scope.StartsWith("registry:", StringComparison.Ordinal)) {
@@ -61,11 +64,12 @@ namespace DockerTokenAuthentication.Core {
 							if (x > 0) {
 								type = "registry";
 								name = scope.Substring(9, x - 9);
-								access = scope.Substring(x + 1).Split(',');
+								requestedAccess = scope.Substring(x + 1).Split(',');
+								access = account.RegistryAccess;
 							}
 						}
 
-						await context.Response.WriteAsync($"{{\"token\":\"{CreateToken(account, type, name, access)}\"}}");
+						await context.Response.WriteAsync($"{{\"token\":\"{CreateToken(account, string.Equals("true", offline_token, StringComparison.Ordinal), access, type, name, requestedAccess)}\"}}");
 						return;
 					}
 				}
@@ -77,7 +81,7 @@ namespace DockerTokenAuthentication.Core {
 			//await _nextMiddleware(context);
 		}
 
-		private string CreateToken(IRegistryAccount account, string type, string name, string[] requestedAccess) {
+		private string CreateToken(IRegistryAccount account, bool offlineToken, IRegistryAccess access, string type, string name, string[] requestedAccess) {
 
 			string kid;
 			using (var ecdsa = ECDsa.Create()) {
@@ -105,7 +109,7 @@ namespace DockerTokenAuthentication.Core {
 			claimset += $"\"iss\":\"{JavaScriptEncoder.UnsafeRelaxedJsonEscaping.Encode(_settings.TokenAuthentication.Issuer)}\",";
 			claimset += $"\"sub\":\"{account.Username}\",";
 			claimset += $"\"aud\":\"{JavaScriptEncoder.UnsafeRelaxedJsonEscaping.Encode(account.Registry)}\",";
-			claimset += $"\"exp\":{CommonUtility.GetTimestamp(now.AddHours(24))},";
+			claimset += $"\"exp\":{CommonUtility.GetTimestamp(offlineToken && access == null ? now.AddMonths(6) : now.AddHours(24))},";
 			claimset += $"\"nbf\":{CommonUtility.GetTimestamp(now)},";
 			claimset += $"\"iat\":{CommonUtility.GetTimestamp(now)},";
 			claimset += $"\"jti\":\"{Guid.NewGuid().ToString("N")}\"";
@@ -114,12 +118,19 @@ namespace DockerTokenAuthentication.Core {
 				claimset += $"\"type\":\"{type}\",";
 				claimset += $"\"name\":\"{JavaScriptEncoder.UnsafeRelaxedJsonEscaping.Encode(name)}\",";
 				claimset += "\"actions\":[";
-				bool first = true;
-				foreach (var access in requestedAccess) {
-					if (account.Access.Contains(access)) {
-						if (first) { first = false; }
-						else { claimset += ','; }
-						claimset += $"\"{JavaScriptEncoder.UnsafeRelaxedJsonEscaping.Encode(access)}\"";
+				if (access != null) {
+					if (access.ScopedAccess == null || !access.ScopedAccess.TryGetValue(name, out var accountAccess)) {
+						accountAccess = access.Access;
+					}
+					if (accountAccess != null) {
+						bool first = true;
+						foreach (var accessToken in requestedAccess) {
+							if (accountAccess.Contains(accessToken)) {
+								if (first) { first = false; }
+								else { claimset += ','; }
+								claimset += $"\"{JavaScriptEncoder.UnsafeRelaxedJsonEscaping.Encode(accessToken)}\"";
+							}
+						}
 					}
 				}
 				claimset += "]}]";
@@ -145,8 +156,8 @@ namespace DockerTokenAuthentication.Core {
 		}
 
 		private static string Base64UrlEncode(byte[] arg) {
-			string s = Convert.ToBase64String(arg); // Regular base64 encoder
-			s = s.Split('=')[0]; // Remove any trailing '='s
+			string s = Convert.ToBase64String(arg); // regular base64 encoder
+			s = s.Split('=')[0]; // remove any trailing '='s
 			s = s.Replace('+', '-'); // 62nd char of encoding
 			s = s.Replace('/', '_'); // 63rd char of encoding
 			return s;

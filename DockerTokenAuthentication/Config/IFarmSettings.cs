@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace DockerTokenAuthentication.Config {
 	public interface IFarmSettings {
-		public IReadOnlyList<IServerBinding> ServerBindings { get; }
-		public ITokenAuthentication TokenAuthentication { get; }
+		IReadOnlyList<IServerBinding> ServerBindings { get; }
+		ITokenAuthentication TokenAuthentication { get; }
 	}
 }
