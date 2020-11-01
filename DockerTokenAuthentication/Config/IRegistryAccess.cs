@@ -13,7 +13,6 @@ namespace DockerTokenAuthentication.Config {
 
 	public class RegistryAccess : IRegistryAccess {
 
-		private Dictionary<string, List<string>> _scopedAccess;
 		private IReadOnlyDictionary<string, IReadOnlyList<string>> _scopedAccessValue;
 
 		[JsonPropertyName("access")]
