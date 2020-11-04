@@ -93,6 +93,8 @@ namespace DockerTokenAuthentication {
 											}
 											else {
 												// https binding
+												var logger = options.ApplicationServices.GetService<ILoggerFactory>().CreateLogger<Program>();
+												logger.LogInformation("Using TLS certificate " + certificate.Subject);
 												var isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 												options.ListenAnyIP(kv.Port, listenOptions => {
 													listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
