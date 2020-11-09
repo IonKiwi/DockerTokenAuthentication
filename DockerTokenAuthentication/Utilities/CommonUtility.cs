@@ -1,7 +1,9 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -463,6 +465,72 @@ namespace DockerTokenAuthentication.Utilities {
 
 		public static DateTime GetDateTimeFromTimestamp(long timestamp) {
 			return new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(timestamp);
+		}
+
+		public static bool Verify(X509Certificate2 certificate, ILogger logger) {
+			X509ChainPolicy policy = new X509ChainPolicy();
+			policy.RevocationMode = X509RevocationMode.Online;
+			policy.RevocationFlag = X509RevocationFlag.ExcludeRoot;
+			policy.VerificationTime = DateTime.Now;
+			policy.UrlRetrievalTimeout = new TimeSpan(0, 1, 0);
+			return Verify(certificate, policy, logger);
+		}
+
+		public static bool Verify(X509Certificate2 certificate, X509ChainPolicy policy, ILogger logger) {
+			using (X509Chain chain = new X509Chain()) {
+				chain.ChainPolicy = policy;
+
+				string policyInfo = string.Empty;
+				if (chain.ChainPolicy != null) {
+					policyInfo = "RevocationMode: " + chain.ChainPolicy.RevocationMode + ", RevocationFlag: " + chain.ChainPolicy.RevocationFlag + ", VerificationFlags: " + chain.ChainPolicy.VerificationFlags;
+				}
+
+				var valid = chain.Build(certificate);
+				if (valid) {
+					logger.LogInformation($"Certificate '{certificate.Subject}' validated.{Environment.NewLine}policyInfo: {policyInfo}");
+					return true;
+				}
+
+				string chainErrors = string.Empty;
+				if (chain.ChainStatus != null) {
+					foreach (X509ChainStatus status in chain.ChainStatus) {
+						if (!string.IsNullOrEmpty(chainErrors)) {
+							chainErrors += Environment.NewLine;
+						}
+						chainErrors += $"  {status.Status}: {status.StatusInformation}";
+					}
+				}
+
+				string chainElements = string.Empty;
+				for (var i = 0; i < chain.ChainElements.Count; i++) {
+					X509ChainElement cel = chain.ChainElements[i];
+					if (cel.ChainElementStatus != null && cel.ChainElementStatus.Length > 0) {
+						if (!string.IsNullOrEmpty(chainElements)) {
+							chainElements += Environment.NewLine;
+						}
+
+						string cName = string.Empty;
+						if (cel.Certificate != null) {
+							cName = cel.Certificate.Subject;
+						}
+
+						chainElements += $"  {cName}:";
+
+						foreach (X509ChainStatus status in cel.ChainElementStatus) {
+							if (status.Status == X509ChainStatusFlags.NotTimeValid && cel.Certificate != null) {
+								chainElements += $"{Environment.NewLine}    {status.Status}: {cel.Certificate.NotBefore:yyyy-MM-dd HH:mm:ss} - {cel.Certificate.NotAfter:yyyy-MM-dd HH:mm:ss}: {status.StatusInformation}";
+							}
+							else {
+								chainElements += $"{Environment.NewLine}    {status.Status}: {status.StatusInformation}";
+							}
+						}
+					}
+				}
+				chainErrors = chainErrors == string.Empty ? string.Empty : $"{Environment.NewLine}chainErrors:{Environment.NewLine}{chainErrors}";
+				chainElements = chainElements == string.Empty ? string.Empty : $"{Environment.NewLine}chainElements:{Environment.NewLine}{chainElements}";
+				logger.LogWarning($"Certificate '{certificate.Subject}' could not be validated.{Environment.NewLine}policyInfo: {policyInfo}{chainErrors}{chainElements}");
+				return false;
+			}
 		}
 	}
 }
