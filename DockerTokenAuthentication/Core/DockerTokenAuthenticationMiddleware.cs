@@ -26,7 +26,8 @@ namespace DockerTokenAuthentication.Core {
 		public async Task Invoke(HttpContext context) {
 
 			var requestUri = new Uri($"{context.Request.Scheme}://{context.Request.Host}{context.Request.Path}{context.Request.QueryString}");
-			_logger.LogWarning("Request: " + requestUri.OriginalString);
+			var requestId = Guid.NewGuid().ToString("D");
+			_logger.LogInformation($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{requestId}] Request: {requestUri.OriginalString}");
 
 			string authorization = context.Request.Headers["Authorization"];
 			string service = context.Request.Query["service"];
@@ -69,7 +70,7 @@ namespace DockerTokenAuthentication.Core {
 							}
 						}
 
-						await context.Response.WriteAsync($"{{\"token\":\"{CreateToken(account, string.Equals("true", offline_token, StringComparison.Ordinal), access, type, name, requestedAccess)}\"}}");
+						await context.Response.WriteAsync($"{{\"token\":\"{CreateToken(requestId, account, string.Equals("true", offline_token, StringComparison.Ordinal), access, type, name, requestedAccess)}\"}}");
 						return;
 					}
 				}
@@ -77,11 +78,12 @@ namespace DockerTokenAuthentication.Core {
 
 			context.Response.StatusCode = 401;
 			context.Response.Headers["WWW-Authenticate"] = "Basic realm=\"Docker token authentication\", charset=\"UTF-8\"";
+			_logger.LogInformation($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{requestId}] Request authorization required");
 			return;
 			//await _nextMiddleware(context);
 		}
 
-		private string CreateToken(IRegistryAccount account, bool offlineToken, IRegistryAccess access, string type, string name, string[] requestedAccess) {
+		private string CreateToken(string requestId, IRegistryAccount account, bool offlineToken, IRegistryAccess access, string type, string name, string[] requestedAccess) {
 
 			string kid;
 			using (var ecdsa = ECDsa.Create()) {
@@ -129,6 +131,10 @@ namespace DockerTokenAuthentication.Core {
 								if (first) { first = false; }
 								else { claimset += ','; }
 								claimset += $"\"{JavaScriptEncoder.UnsafeRelaxedJsonEscaping.Encode(accessToken)}\"";
+								_logger.LogInformation($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{requestId}] Granting access '{accessToken}' for '{name}' (type '{type}').");
+							}
+							else {
+								_logger.LogInformation($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{requestId}] Requested access '{accessToken}' for '{name}' (type '{type}') is denied.");
 							}
 						}
 					}
