@@ -44,6 +44,8 @@ namespace DockerTokenAuthentication.Core {
 						string.Equals(z.Username, user, StringComparison.OrdinalIgnoreCase) &&
 						string.Equals(z.Password, password, StringComparison.Ordinal));
 					if (account != null) {
+						_logger.LogInformation($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{requestId}] Account '{account.Username}'.");
+
 						context.Response.StatusCode = 200;
 						context.Response.ContentType = "application/json";
 
