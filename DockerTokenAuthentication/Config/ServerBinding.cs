@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace DockerTokenAuthentication.Config {
 	public interface IServerBinding {
 		int Port { get; }
-		IServerCertificateSettings Config { get; }
+		IEndpointConfiguration Config { get; }
 	}
 
 	public class ServerBinding : IServerBinding {
@@ -15,7 +15,7 @@ namespace DockerTokenAuthentication.Config {
 		public int Port { get; set; }
 
 		[JsonPropertyName("config")]
-		public ServerCertificateSettings Config { get; set; }
+		public EndpointConfiguration Config { get; set; }
 
 		public void Init() {
 			if (Config != null) {
@@ -23,6 +23,6 @@ namespace DockerTokenAuthentication.Config {
 			}
 		}
 
-		IServerCertificateSettings IServerBinding.Config => Config;
+		IEndpointConfiguration IServerBinding.Config => Config;
 	}
 }
