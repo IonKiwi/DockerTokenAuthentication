@@ -72,7 +72,9 @@ namespace DockerTokenAuthentication.Core {
 							}
 						}
 
-						await context.Response.WriteAsync($"{{\"token\":\"{CreateToken(requestId, account, string.Equals("true", offline_token, StringComparison.Ordinal), access, type, name, requestedAccess)}\"}}");
+						var token = CreateToken(requestId, account, string.Equals("true", offline_token, StringComparison.Ordinal), access, type, name, requestedAccess);
+						var refreshToken = token.refreshToken == null ? string.Empty : $",\"refresh_token\":\"{token.refreshToken}\"";
+						await context.Response.WriteAsync($"{{\"token\":\"{token.token}\",\"expires_in\":{token.ttl},\"issued_at\":\"{token.iat}\"{refreshToken}}}");
 						return;
 					}
 				}
@@ -85,7 +87,7 @@ namespace DockerTokenAuthentication.Core {
 			//await _nextMiddleware(context);
 		}
 
-		private string CreateToken(string requestId, IRegistryAccount account, bool offlineToken, IRegistryAccess access, string type, string name, string[] requestedAccess) {
+		private (string token, int ttl, string iat, string refreshToken) CreateToken(string requestId, IRegistryAccount account, bool offlineToken, IRegistryAccess access, string type, string name, string[] requestedAccess) {
 
 			string kid;
 			using (var ecdsa = ECDsa.Create()) {
@@ -108,15 +110,16 @@ namespace DockerTokenAuthentication.Core {
 
 			DateTime now = DateTime.UtcNow;
 
+			int ttl = 300;
 			string header = "{\"typ\":\"JWT\",\"alg\":\"ES256\",\"kid\":\"" + kid + "\"}";
 			string claimset = "{";
 			claimset += $"\"iss\":\"{JavaScriptEncoder.UnsafeRelaxedJsonEscaping.Encode(_settings.TokenAuthentication.Issuer)}\",";
 			claimset += $"\"sub\":\"{account.Username}\",";
 			claimset += $"\"aud\":\"{JavaScriptEncoder.UnsafeRelaxedJsonEscaping.Encode(account.Registry)}\",";
-			claimset += $"\"exp\":{CommonUtility.GetTimestamp(offlineToken && access == null ? now.AddMonths(6) : now.AddHours(24))},";
+			claimset += $"\"exp\":{CommonUtility.GetTimestamp(now.AddSeconds(ttl))},";
 			claimset += $"\"nbf\":{CommonUtility.GetTimestamp(now)},";
 			claimset += $"\"iat\":{CommonUtility.GetTimestamp(now)},";
-			claimset += $"\"jti\":\"{Guid.NewGuid().ToString("N")}\"";
+			claimset += $"\"jti\":\"{Guid.NewGuid():N}\"";
 			if (requestedAccess != null && requestedAccess.Length > 0) {
 				claimset += ",\"access\":[{";
 				claimset += $"\"type\":\"{type}\",";
@@ -152,8 +155,32 @@ namespace DockerTokenAuthentication.Core {
 
 			byte[] signed = SignData(signBytes);
 			string signedB64 = Base64UrlEncode(signed);
+			string tokenValue = signInput + '.' + signedB64;
 
-			return signInput + '.' + signedB64;
+			string offlineTokenValue = null;
+			if (offlineToken) {
+				header = "{\"typ\":\"JWT\",\"alg\":\"ES256\",\"kid\":\"" + kid + "\"}";
+				claimset = "{";
+				claimset += $"\"iss\":\"{JavaScriptEncoder.UnsafeRelaxedJsonEscaping.Encode(_settings.TokenAuthentication.Issuer)}\",";
+				claimset += $"\"sub\":\"{account.Username}\",";
+				claimset += $"\"aud\":\"{JavaScriptEncoder.UnsafeRelaxedJsonEscaping.Encode(account.Registry)}\",";
+				claimset += $"\"exp\":{CommonUtility.GetTimestamp(now.AddMonths(1))},";
+				claimset += $"\"nbf\":{CommonUtility.GetTimestamp(now)},";
+				claimset += $"\"iat\":{CommonUtility.GetTimestamp(now)},";
+				claimset += $"\"jti\":\"{Guid.NewGuid():N}\"";
+				claimset += "}";
+
+				headerData = Base64UrlEncode(Encoding.UTF8.GetBytes(header));
+				payloadData = Base64UrlEncode(Encoding.UTF8.GetBytes(claimset));
+				signInput = string.Concat(headerData, '.', payloadData);
+				signBytes = Encoding.UTF8.GetBytes(signInput);
+
+				signed = SignData(signBytes);
+				signedB64 = Base64UrlEncode(signed);
+				offlineTokenValue = signInput + '.' + signedB64;
+			}
+
+			return (tokenValue, ttl, now.ToString("yyyy-MM-ddTHH:mm:ss.FFFFFFFK"), offlineTokenValue);
 		}
 
 		public byte[] SignData(byte[] input) {
