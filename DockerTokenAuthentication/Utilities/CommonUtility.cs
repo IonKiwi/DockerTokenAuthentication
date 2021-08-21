@@ -532,5 +532,28 @@ namespace DockerTokenAuthentication.Utilities {
 				return false;
 			}
 		}
+
+		public static string Base64UrlEncode(byte[] data) {
+			string s = Convert.ToBase64String(data); // regular base64 encoding
+			s = s.Split('=')[0]; // remove any traling '='
+			s = s.Replace('+', '-'); // 62nd char of encoding
+			s = s.Replace('/', '_'); // 63rd char of encoding
+			return s;
+		}
+
+		public static byte[] Base64UrlDecode(string data) {
+			string s = data;
+			s = s.Replace('-', '+'); // 62nd char of encoding
+			s = s.Replace('_', '/'); // 63rd char of encoding
+			switch (s.Length % 4) // pad with trailing '='
+			{
+				case 0: break; // no pad needed
+				case 2: s += "=="; break; // two pad chars
+				case 3: s += '='; break; // one pad char
+				default:
+					throw new FormatException("Invalid base64 url encoded string");
+			}
+			return Convert.FromBase64String(s); // regular base64 decoding
+		}
 	}
 }
