@@ -82,7 +82,7 @@ docker run -d `
   docker-registry.local:5000/dockertokenauthentication:latest
 ```
 
-- Map the docker token authentication configuration to /app/config
+- Map the docker token authentication configuration 'DockerTokenAuthentication.global.json' to /app/config
 
 Run the registry using the token authentication server
 
