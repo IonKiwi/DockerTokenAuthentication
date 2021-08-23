@@ -68,3 +68,40 @@ Grant only pull access to 'samalba/my-app'
 	}
 }
 ```
+
+## Running
+
+Available as Docker container (Linux Alpine of Windows 1809 nanoserver)
+
+```
+docker run -d `
+  --restart=always `
+  --name registry-auth `
+  -v C:\docker\registry-auth-config:/app/config:ro `
+  -p 5001:5001 `
+  docker-registry.local:5000/dockertokenauthentication:latest
+```
+
+- Map the docker token authentication configuration to /app/config
+
+Run the registry using the token authentication server
+
+```
+docker run -d `
+  --restart=always `
+  --name registry `
+  -v D:\docker\local-cert:/certs `
+  -v D:\docker\registry-data:/var/lib/registry `
+  -e REGISTRY_HTTP_ADDR=0.0.0.0:443 `
+  -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/docker-registry-tls.pem `
+  -e REGISTRY_HTTP_TLS_KEY=/certs/docker-registry-tls.key `
+  -e REGISTRY_HTTP_SECRET="my-secret" `
+  -e REGISTRY_AUTH=token `
+  -e REGISTRY_AUTH_TOKEN_REALM=https://docker-registry.local:5001/auth `
+  -e REGISTRY_AUTH_TOKEN_SERVICE="Docker registry" `
+  -e REGISTRY_AUTH_TOKEN_ISSUER="docker-auth.local" `
+  -e REGISTRY_AUTH_TOKEN_ROOTCERTBUNDLE="/certs/docker-auth.pem" `
+  -e REGISTRY_STORAGE_DELETE_ENABLED=true `
+  -p 5000:443 `
+  registry:2
+```
