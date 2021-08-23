@@ -7,6 +7,8 @@ https://docs.docker.com/registry/spec/auth/oauth/
 
 ## Configuration
 
+All the configuration for the docker authentication server is in DockerTokenAuthentication.global.json
+
 ### Server (and TLS)
 
 ```
