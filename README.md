@@ -73,7 +73,7 @@ Grant only pull access to 'samalba/my-app'
 
 ## Running
 
-Available as Docker container (Linux Alpine of Windows 1809 nanoserver)
+Available as Docker container (Linux Alpine or Windows nanoserver)
 
 ```
 docker run -d `
